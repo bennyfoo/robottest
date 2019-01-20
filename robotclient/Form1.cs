@@ -36,6 +36,8 @@ namespace robotclient
         //创建接收客户端发送消息的线程
         Thread threadReceive;
 
+        bool bIsSocketClosed;
+
         /// <summary>
         /// 连接
         /// </summary>
@@ -58,6 +60,7 @@ namespace robotclient
                 //设置为后台线程
                 threadReceive.IsBackground = true;
                 threadReceive.Start();
+                bIsSocketClosed = false;
             }
             catch (Exception ex)
             {
@@ -70,6 +73,8 @@ namespace robotclient
         /// </summary>
         private void Receive()
         {
+            if (bIsSocketClosed)
+                return;
             try
             {
                 while (true)
@@ -83,32 +88,9 @@ namespace robotclient
                     }
                     else
                     {
-                        //判断发送的数据的类型
-                        //if (buffer[0] == 0)//表示发送的是文字消息
-                        //{
-                            string str = Encoding.Default.GetString(buffer, 0, r);
-                            this.txt_Log.Invoke(receiveCallBack, "接收远程服务器:" + str);
-                        //}
-                        //表示发送的是文件
-                        //if (buffer[0] == 1)
-                        //{
-                        //    SaveFileDialog sfd = new SaveFileDialog();
-                        //    sfd.InitialDirectory = @"";
-                        //    sfd.Title = "请选择要保存的文件";
-                        //    sfd.Filter = "所有文件|*.*";
-                        //    sfd.ShowDialog(this);
-
-                        //    string strPath = sfd.FileName;
-                        //    using (FileStream fsWrite = new FileStream(strPath, FileMode.OpenOrCreate, FileAccess.Write))
-                        //    {
-                        //        fsWrite.Write(buffer, 1, r - 1);
-                        //    }
-
-                        //    MessageBox.Show("保存文件成功");
-                        //}
+                        string str = Encoding.Default.GetString(buffer, 0, r);
+                        this.txt_Log.Invoke(receiveCallBack, "接收远程服务器:" + str);
                     }
-
-
                 }
             }
             catch (Exception ex)
@@ -117,10 +99,9 @@ namespace robotclient
             }
         }
 
-
         private void SetValue(string strValue)
         {
-            this.txt_Log.AppendText(strValue + "\r \n");
+            this.txt_Log.AppendText(strValue + "\n");
         }
 
         /// <summary>
@@ -143,6 +124,39 @@ namespace robotclient
             }
         }
 
+        /// <summary>
+        /// 客户端给服务器发送消息
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btn_Washgun_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string strMsg = "<Rob><Notify>1</Notify><Argc>0</Argc></Rob>";
+                byte[] buffer = new byte[2048];
+                buffer = Encoding.Default.GetBytes(strMsg);
+                int receive = socketSend.Send(buffer);
+                this.txt_Msg.AppendText(strMsg + "\n");
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("发送消息出错:" + ex.Message);
+            }
+        }
+
+
+        /// <summary>
+        /// 客户端给服务器发送消息
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btn_ClearLog_Click(object sender, EventArgs e)
+        {
+            this.txt_Log.Clear();
+        }
+
         private void FrmClient_Load(object sender, EventArgs e)
         {
             Control.CheckForIllegalCrossThreadCalls = false;
@@ -157,9 +171,26 @@ namespace robotclient
         private void btn_CloseConnect_Click(object sender, EventArgs e)
         {
             //关闭socket
-            socketSend.Close();
-            //终止线程
-            threadReceive.Abort();
+            if (socketSend != null)
+            {
+
+                //终止线程
+                try
+                {
+                    if (threadReceive.IsAlive)
+                    {
+                        bIsSocketClosed = true;
+                        socketSend.Shutdown(SocketShutdown.Both);
+                        threadReceive.Abort();
+
+                        socketSend.Close();
+                    }
+                }
+                catch(ThreadAbortException ex)
+                {
+                    LogExecute.WriteExceptionLog("ClientThread",ex);
+                }
+            }
         }
     }
 }

@@ -26,5 +26,18 @@ namespace robotclient.Properties
                 return defaultInstance;
             }
         }
+
+
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("\\\\Log")]
+
+        public string LogPath
+        {
+            get
+            {
+                return ((string)(this["LogPath"]));
+            }
+        }
     }
 }
